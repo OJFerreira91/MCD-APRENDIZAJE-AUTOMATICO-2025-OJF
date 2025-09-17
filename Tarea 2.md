@@ -13,5 +13,6 @@ Se procesa el data set con los siguientes puntos:
 - Crear subconjutos de datos
 - Crear grupos de datos
 
+Link:
 [Tarea2.ipynb](Tarea2.ipynb)
 
