@@ -13,5 +13,5 @@ Filtrar registros
 Crear subconjutos de datos
 Crear grupos de datos
 
-[Tarea2.ipynb](Tarea 2.ipynb)
+[Tarea2.ipynb](Tarea2.ipynb)
 
