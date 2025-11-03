@@ -10,6 +10,8 @@ Se procesa el data set con los siguientes puntos:
 - Realiza alguna prueba de hipótesis a partir de las conclusiones que hayas sacado de la matriz de correlación
 - Presenta tus resultados gráficamente
 
+- Fuente del dataset: [Insurance](https://www.kaggle.com/datasets/mirichoi0218/insurance)
+
 Link:
 [Tarea3.ipynb](Tarea3.ipynb)
 
