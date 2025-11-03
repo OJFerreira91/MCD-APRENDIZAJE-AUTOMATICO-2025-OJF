@@ -21,12 +21,22 @@ Todas las interpretaciones se realizaron según esta regla.
 
 Todas las variables numéricas evaluadas presentan una distribución NO normal (p ≤ 0.05), por lo que se consideran NO paramétricas. Esto implica que, para análisis estadísticos inferenciales y correlaciones, deberán utilizarse métodos no paramétricos.
 
-- charges vs age: correlación positiva → a mayor edad, mayor costo.
+| Variable | Conclusión     |
+| -------- | -------------- |
+| age      | No paramétrica |
+| bmi      | No paramétrica |
+| children | No paramétrica |
+| charges  | No paramétrica |
 
-- charges vs bmi: correlación positiva → mayor BMI, mayor costo.
 
-- children tiene correlaciones bajas con las demás → poca relación.
 
+
+
+# Hipotesis
+
+- H₀: Los fumadores y no fumadores tienen el mismo costo médico (charges).
+
+- H₁: Los fumadores tienen mayor costo médico que los no fumadores.
 
 Link:
 [Tarea3.ipynb](Tarea3.ipynb)
