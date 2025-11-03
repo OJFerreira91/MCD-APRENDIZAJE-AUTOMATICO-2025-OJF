@@ -36,3 +36,6 @@ Link:
 
 - [SelectKBest / univariate selection / f_regression / MI](https://www.kaggle.com/datasets/mirichoi0218/insurance)
 - [RFE](https://scikit-learn.org/stable/modules/generated/sklearn.feature_selection.RFE.html)
+- [Lasso para selección](https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.Lasso.html)
+- [Permutation importance](https://scikit-learn.org/stable/modules/permutation_importance.html)
+- [AIC/BIC](https://en.wikipedia.org/wiki/Akaike_information_criterion)
