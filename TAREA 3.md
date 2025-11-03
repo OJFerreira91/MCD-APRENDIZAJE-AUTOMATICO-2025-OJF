@@ -10,5 +10,14 @@ Se procesa el data set con los siguientes puntos:
 - Realiza alguna prueba de hipótesis a partir de las conclusiones que hayas sacado de la matriz de correlación
 - Presenta tus resultados gráficamente
 
+Se aplicó la prueba de Shapiro-Wilk a las variables numéricas.
+El nivel de significancia utilizado fue α = 0.05.
+De acuerdo con los p-values obtenidos:
+
+- Si p > 0.05 → no se rechaza la normalidad → datos paramétricos
+
+- Si p ≤ 0.05 → se rechaza la normalidad → datos no paramétricos
+Todas las interpretaciones se realizaron según esta regla.
+
 Link:
-[Tarea2.ipynb](Tarea2.ipynb)
+[Tarea3.ipynb](Tarea3.ipynb)
