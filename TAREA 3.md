@@ -28,6 +28,7 @@ Todas las variables numéricas evaluadas presentan una distribución NO normal (
 | children | No paramétrica |
 | charges  | No paramétrica |
 
+✅ Todas las variables numéricas mostraron distribuciones no normales, por lo que se utilizaron pruebas no paramétricas.
 
 
 
