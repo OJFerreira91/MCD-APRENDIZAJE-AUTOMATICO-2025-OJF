@@ -62,7 +62,7 @@ El modelo con 4 características logra el mejor equilibrio entre desempeño y co
 | region_*       |        < -1.84 | ⭐           |            ❌ Excluir |
 
 
-Link:
+Fuentes:
 
 - [SelectKBest / univariate selection / f_regression / MI](https://www.kaggle.com/datasets/mirichoi0218/insurance)
 - [RFE](https://scikit-learn.org/stable/modules/generated/sklearn.feature_selection.RFE.html)
