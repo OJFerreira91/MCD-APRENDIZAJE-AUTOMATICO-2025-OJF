@@ -13,6 +13,7 @@ Se procesa el data set con los siguientes puntos:
 Link:
 [Tarea4.ipynb](Tarea4.ipynb)
 
+## Conclusión
 Se utilizaron enfoques de selección univariada (SelectKBest con F-test e Información Mutua), regularización L1 con LassoCV, métodos wrapper como RFE con regresión lineal, y un modelo no lineal basado en árboles con Permutation Importance.
 
 Las variables smoker, age, bmi y children fueron consistentes entre múltiples enfoques y presentaron un impacto significativo en el desempeño predictivo.
@@ -30,6 +31,35 @@ Variables excluidas:
 - region_* → efectos muy débiles respecto a la categoría base; mejoras mínimas en predicción
 
 Estos hallazgos están alineados con investigaciones similares en seguros médicos, donde el tabaquismo y la edad son determinantes primarios del gasto sanitario.
+
+## Bloque 4
+
+| k   | RMSE           | R²              | AIC              | BIC    |
+| --- | -------------- | --------------- | ---------------- | ------ |
+| 1   | 7497           | 0.607           | 20751            | 20761  |
+| 2   | 6412           | 0.711           | 20439            | 20454  |
+| 3   | 6102           | 0.738           | 20343            | 20363  |
+| ✅ 4 | ✅6076 (↓mejor) | ✅0.740 (↑mejor) | ✅20338 (↓mínimo) | ✅20363 |
+| 5   | 6074           | 0.740           | 20339            | 20369  |
+
+El modelo con 4 características logra el mejor equilibrio entre desempeño y complejidad:
+✅ menor AIC
+✅ mejor R²
+✅ menor RMSE
+✅ sin aumento importante de parámetros
+
+✔️ K Óptimo = 4 predictores
+
+## Bloque 5
+
+| Feature        | Score_combined | Importancia |            Resultado |
+| -------------- | -------------: | ----------- | -------------------: |
+| **smoker_yes** |         7.5166 | ⭐⭐⭐⭐⭐       |       ✅ Seleccionada |
+| **age**        |         2.0792 | ⭐⭐⭐⭐        |       ✅ Seleccionada |
+| bmi            |        -0.8878 | ⭐⭐          | ✅ Candidata marginal |
+| children       |        -1.5186 | ⭐           |            ❌ Excluir |
+| sex_male       |        -1.6185 | ⭐           |            ❌ Excluir |
+| region_*       |        < -1.84 | ⭐           |            ❌ Excluir |
 
 
 Link:
