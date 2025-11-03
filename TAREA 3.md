@@ -19,7 +19,14 @@ De acuerdo con los p-values obtenidos:
 - Si p ≤ 0.05 → se rechaza la normalidad → datos no paramétricos
 Todas las interpretaciones se realizaron según esta regla.
 
-Todas las variables numéricas evaluadas presentan una distribución NO normal (p ≤ 0.05), por lo que se consideran NO paramétricas. Esto implica que, para análisis estadísticos inferenciales y correlaciones, deberán utilizarse métodos no paramétricos
+Todas las variables numéricas evaluadas presentan una distribución NO normal (p ≤ 0.05), por lo que se consideran NO paramétricas. Esto implica que, para análisis estadísticos inferenciales y correlaciones, deberán utilizarse métodos no paramétricos.
+
+- charges vs age: correlación positiva → a mayor edad, mayor costo.
+
+- charges vs bmi: correlación positiva → mayor BMI, mayor costo.
+
+- children tiene correlaciones bajas con las demás → poca relación.
+
 
 Link:
 [Tarea3.ipynb](Tarea3.ipynb)
