@@ -1,0 +1,243 @@
+\documentclass[12pt]{article}
+
+% Paquetes necesarios
+\usepackage[utf8]{inputenc}
+\usepackage[spanish]{babel}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{setspace}
+\usepackage{geometry}
+\geometry{margin=1in}
+\usepackage{hyperref}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsfonts}
+\usepackage{bm} % para vectores en negritas: \bm{x}
+\usepackage{subcaption} % ⚠️ Agregar en el preámbulo si no está
+
+
+\begin{document}
+
+% Título del artículo
+\title{Segmentación No Supervisada de Asegurados Basada en Factores de Riesgo para la Optimización del Costo de Seguro Médico}
+\author{Oscar Jaime Ferreira}
+\date{\today}
+
+\maketitle
+
+\begin{abstract}
+La gestión eficiente de costos médicos es un desafío central para las aseguradoras de salud, especialmente cuando los asegurados presentan perfiles de riesgo heterogéneos. En este trabajo se analizan características clave relacionadas con el costo del seguro médico, tales como edad, índice de masa corporal (IMC), número de dependientes y condición de fumador. Se aplica el algoritmo OPTICS, un método de clustering basado en densidad, con el objetivo de identificar subgrupos de riesgo sin necesidad de imponer un número fijo de clusters. Los resultados muestran la existencia de seis segmentos principales de asegurados y una proporción significativa de casos atípicos, lo que permite una mejor comprensión de la variabilidad en los niveles de riesgo. Estos hallazgos pueden ser utilizados para mejorar la segmentación de mercado, estimación de primas y políticas de prevención en aseguradoras de salud.
+\end{abstract}
+
+\newpage
+
+\section{Introducción}
+
+El incremento constante en los costos de atención médica representa un reto significativo para aseguradoras y sistemas de salud. La identificación precisa del riesgo asociado a los asegurados permite mejorar la tarificación y gestión financiera de las pólizas \cite{jamotton2024}. La presencia de factores como edad avanzada, obesidad y hábitos nocivos incrementa la probabilidad de reclamaciones médicas más costosas, impulsando la necesidad de modelos analíticos más robustos.
+
+En este contexto, los métodos de aprendizaje no supervisado permiten descubrir estructuras y grupos en los datos sin requerir etiquetas predefinidas, siendo una alternativa clave para la segmentación actuarial \cite{momahhed2023}. En particular, los algoritmos de clustering basados en densidad facilitan la detección de subpoblaciones con comportamientos de riesgo diferenciados y casos atípicos relevantes para el costo asegurador \cite{ankerst1999}.
+
+El algoritmo OPTICS, propuesto por Ankerst et al. (1999), permite identificar clusters con densidades variables sin fijar a priori la cantidad de grupos, lo que resulta especialmente adecuado en datos de asegurados con heterogeneidad de riesgo \cite{ankerst1999}. Mejoras recientes han extendido su estabilidad en contextos de alto desbalance, característica frecuente en asegurados fumadores frente a la mayoría no fumadora \cite{tang2021}.
+
+Este trabajo aplica OPTICS para segmentar perfiles de asegurados mediante cuatro variables clave: edad, IMC, número de dependientes y condición de fumador. Los resultados buscan apoyar tanto la optimización de costos en aseguradoras de salud como el diseño de estrategias preventivas para poblaciones con mayor riesgo médico \cite{wang2021}.
+
+
+\section{Descripción de los datos}
+
+Para este trabajo se emplea el \textit{Medical Cost Personal Dataset}, el cual contiene información sobre asegurados en los Estados Unidos y el costo anual asociado a su seguro médico. El conjunto original incluye 1338 observaciones y siete variables, de las cuales se seleccionaron cuatro para el análisis no supervisado, debido a su relevancia actuarial y sanitaria:
+
+\begin{itemize}
+    \item \textbf{Edad (age):} años cumplidos del asegurado.
+    \item \textbf{Índice de Masa Corporal (bmi):} relación entre peso y estatura, indicador de sobrepeso u obesidad.
+    \item \textbf{Número de dependientes (children):} cantidad de hijos incluidos en la póliza.
+    \item \textbf{Condición de fumador (smoker\_yes):} variable binaria que distingue entre asegurados fumadores (1) y no fumadores (0).
+\end{itemize}
+
+Se eliminaron variables exclusivamente categóricas que no aportaban información sustancial al riesgo médico para este estudio (\textit{sexo} y \textit{región}) y la variable objetivo \textit{charges}, ya que no se emplean etiquetas en el proceso no supervisado.
+
+En la Tabla \ref{stats} se presentan estadísticos descriptivos de las cuatro variables seleccionadas:
+
+\begin{table}[h!]
+\centering
+\caption{Estadísticos descriptivos de las variables analizadas}
+\label{stats}
+\begin{tabular}{lcccc}
+\hline
+\textbf{Variable} & \textbf{Media} & \textbf{Desv. Est.} & \textbf{Mínimo} & \textbf{Máximo} \\
+\hline
+Edad (age) & 39.21 & 14.05 & 18 & 64 \\
+IMC (bmi) & 30.66 & 6.39 & 16.0 & 53.1 \\
+Hijos (children) & 1.09 & 1.21 & 0 & 5 \\
+Fumador (smoker\_yes) & 0.21 & 0.41 & 0 & 1 \\
+\hline
+\end{tabular}
+\end{table}
+
+El conjunto de datos presenta una población mayoritariamente no fumadora, con edades distribuidas principalmente entre los 20 y 60 años, y valores elevados de IMC en promedio, lo que sugiere la presencia de sobrepeso en la muestra. Estas características justifican el análisis de segmentación, dado que existen factores de riesgo diferenciados dentro de la población asegurada.
+
+\begin{figure}[h!]
+\centering
+\includegraphics[width=0.45\textwidth]{hist_age.png}
+\includegraphics[width=0.45\textwidth]{hist_bmi.png}
+\includegraphics[width=0.45\textwidth]{hist_children.png}
+\includegraphics[width=0.45\textwidth]{bar_smoker.png}
+\caption{Visualización descriptiva de las variables empleadas en el análisis: edad, IMC, número de dependientes y condición de fumador.}
+\label{fig:descriptivos}
+\end{figure}
+
+Como se observa en la Figura \ref{fig:descriptivos}, la edad se concentra entre los 25 y 55 años, lo cual representa una población adulta activa. El IMC presenta un desplazamiento hacia valores altos, indicando una prevalencia notable de sobrepeso u obesidad en la muestra. La mayoría de los asegurados no tienen hijos o tienen uno solo, reflejando pocos dependientes en la póliza. Finalmente, la proporción de fumadores es baja, lo que sugiere una distribución de riesgo desbalanceada, característica que puede afectar la estructura de los clusters identificados posteriormente.
+
+
+\section{Antecedentes}
+
+La segmentación no supervisada se ha aplicado con éxito en analítica de seguros para descubrir perfiles de riesgo cuando coexisten variables numéricas y categóricas. Jamotton (2024) muestra, en un contexto actuarial, adaptaciones de K-means, variantes difusas y clustering espectral para portafolios de pólizas, destacando cómo la segmentación soporta mapas de riesgo y rejillas de tarificación no supervisadas \cite{jamotton2024}. 
+
+En el ámbito específico de salud, Momahhed et al. (2023) agrupan a asegurados a partir de millones de reclamaciones de prescripción ambulatoria, usando K-means y validación con coeficiente de silueta, para distinguir clases de riesgo con implicaciones directas en costos \cite{momahhed2023}. 
+
+Respecto a métodos basados en densidad, fundamentales para detectar estructuras no convexas y puntos atípicos, el algoritmo OPTICS (Ankerst et al., 1999) ordena los puntos según “alcanzabilidad” y permite revelar jerarquías de densidades sin fijar a priori el número de grupos \cite{ankerst1999}. Mejoras recientes a OPTICS han sido propuestas para manejar densidades desiguales y facilitar la determinación robusta del número de clusters en datos reales \cite{tang2021}. Además, en aplicaciones médicas, enfoques basados en densidad como DBSCAN y OPTICS se han utilizado para analizar datos clínicos con presencia de atípicos y estructuras complejas, reforzando su idoneidad cuando la heterogeneidad sanitaria es relevante \cite{wang2021}.
+
+\section{Metodología}
+
+El procedimiento metodológico seguido en este trabajo se resume en cuatro etapas principales: preprocesamiento de datos, selección de características, aplicación del algoritmo OPTICS y evaluación de la calidad del agrupamiento mediante métricas de validación interna.
+
+\subsection{Preprocesamiento y selección de variables}
+
+A partir del conjunto de datos original, se seleccionaron cuatro variables consideradas actuarialmente relevantes: edad, índice de masa corporal (IMC), número de dependientes y condición de fumador. Las variables categóricas se transformaron en formato binario y se aplicó normalización mediante \textit{StandardScaler}, dada la diferencia de escalas entre edad (años) e IMC (kg/m\textsuperscript{2}).
+
+Sea el vector de características para cada individuo $x_i \in \mathbb{R}^{d}$, la normalización se define como:
+
+\begin{equation}
+x^{*}_{ij} = \frac{x_{ij} - \mu_j}{\sigma_j}
+\end{equation}
+
+donde $\mu_j$ y $\sigma_j$ son la media y desviación estándar de la característica $j$.
+
+\subsection{Algoritmo OPTICS}
+
+OPTICS (\textit{Ordering Points To Identify the Clustering Structure}) es un método de agrupamiento basado en densidad que no requiere especificar el número de clusters. El algoritmo genera un ordenamiento de los puntos y estima para cada uno una distancia de alcanzabilidad (\textit{reachability distance}) que depende de dos conceptos:
+
+\begin{itemize}
+    \item \textbf{Distancia núcleo}:
+    \begin{equation}
+    core\_dist(p) = \text{k-dist}(p)
+    \end{equation}
+    donde k-dist$(p)$ es la distancia al $k$-ésimo vecino más cercano y refleja la densidad local del punto $p$.
+    \item \textbf{Distancia de alcanzabilidad} entre puntos $p$ y $o$:
+    \begin{equation}
+    reachability(p,o) = \max(core\_dist(o), \, dist(o,p))
+    \end{equation}
+\end{itemize}
+
+El análisis de la gráfica de alcanzabilidad (\textit{reachability-plot}) permite identificar valles como posibles clusters y valores elevados como puntos atípicos. Esto lo hace particularmente adecuado para datos con densidades desiguales y presencia de grupos minoritarios de alto riesgo.
+
+\subsection{Métricas de evaluación del clustering}
+
+Se utilizaron tres medidas de validación interna:
+
+\begin{enumerate}
+    \item \textbf{Coeficiente Silhouette} ($S$): mide compacidad y separación entre grupos.
+    \begin{equation}
+    S = \frac{b(i) - a(i)}{\max\{a(i), b(i)\}}
+    \end{equation}
+    donde $a(i)$ es la distancia media entre $i$ y su cluster, y $b(i)$ la mínima distancia media a otros clusters.
+    
+    \item \textbf{Índice de Davies-Bouldin} ($DB$): evalúa dispersión intra-cluster vs separación.
+    \begin{equation}
+    DB = \frac{1}{k} \sum_{i=1}^{k} 
+    \max_{j \neq i} 
+    \left(
+    \frac{\sigma_i + \sigma_j}{d(c_i, c_j)}
+    \right)
+    \end{equation}
+    donde $c_i$ es el centroide del cluster $i$.
+    
+    \item \textbf{Índice Calinski-Harabasz} ($CH$): mide la razón entre dispersión inter e intra grupal.
+    \begin{equation}
+    CH = \frac{\text{tr}(B_k)/(k-1)}{\text{tr}(W_k)/(n-k)}
+    \end{equation}
+    donde $B_k$ y $W_k$ son las matrices de dispersión entre y dentro de clusters.
+\end{enumerate}
+
+Valores altos de Silhouette y Calinski-Harabasz, junto con valores bajos de Davies-Bouldin, indican una estructura de grupos bien definida.
+
+
+\section{Resultados}
+
+El algoritmo OPTICS identificó agrupamientos basados en diferencias de densidad entre
+asegurados, revelando estructuras útiles para segmentar niveles de riesgo médico.
+El análisis de la gráfica de alcanzabilidad permite visualizar la estructura jerárquica de
+los clusters y la presencia de puntos aislados, como se muestra en la
+Figura~\ref{fig:reachability}.
+
+\begin{figure}[ht!]
+\centering
+\includegraphics[width=0.9\textwidth]{reachability_plot.png}
+\caption{Reachability Plot generado por OPTICS. Los valles indican agrupamientos de alta densidad, mientras que los picos representan puntos aislados o de baja densidad.}
+\label{fig:reachability}
+\end{figure}
+
+La Figura~\ref{fig:cluster_risk} presenta la distribución espacial de los individuos en el
+espacio Edad--IMC, junto con los clusters detectados y la proporción de fumadores.
+Se observan dos grupos principales y un conjunto de puntos aislados asociados a baja densidad.
+
+\begin{figure}[ht!]
+\centering
+\includegraphics[width=0.70\textwidth]{scatter_optics.png}
+\vspace{0.3cm}
+
+\includegraphics[width=0.70\textwidth]{risk_clusters.png}
+\caption{(Arriba) Agrupamientos detectados mediante OPTICS.
+(Abajo) Proporción de fumadores por cluster, empleada como indicador de riesgo actuarial.}
+\label{fig:cluster_risk}
+\end{figure}
+
+\clearpage
+\begin{table}[ht!]
+\centering
+\caption{Resumen de variables de riesgo por cluster óptimo.}
+\label{tab:riesgo}
+\begin{tabular}{c c c c c}
+\hline
+Cluster & Edad Prom. & IMC Prom. & \% Fumadores & Riesgo \\ \hline
+0  & 38.51 & 30.71 & 100\% & Alto \\
+1  & 22.58 & 29.02 & 0\%   & Bajo \\
+2  & 56.34 & 31.14 & 0\%   & Bajo \\
+3  & 41.13 & 30.33 & 0\%   & Bajo \\
+-1 & 38.32 & 31.12 & 0\%   & Bajo \\
+\hline
+\end{tabular}
+\end{table}
+
+Como se observa en la Tabla~\ref{tab:riesgo}, el cluster 0 concentra el 100\% de
+asegurados fumadores junto con un IMC promedio elevado, lo cual indica un perfil de
+alto riesgo médico-financiero. Por el contrario, los demás clusters representan perfiles
+de menor siniestralidad esperada al no presentar fumadores ni indicadores antropométricos críticos.
+
+
+
+\section{Conclusiones y Discusión}
+
+El presente trabajo demuestra que el uso de algoritmos de aprendizaje no supervisado
+es una herramienta valiosa para la segmentación de riesgo en seguros médicos. OPTICS
+logró identificar agrupamientos diferenciados de asegurados sin utilizar los costos médicos
+en el proceso de entrenamiento, lo cual permite reconocer segmentos de alto riesgo desde
+una perspectiva puramente demográfica y de hábitos de salud.
+
+El cluster con mayor proporción de fumadores refleja un perfil de asegurados
+susceptible a eventos médicos de alto costo, lo que en términos actuariales se
+traduce en un incremento esperado de reclamaciones y en la necesidad de ajustar
+las primas o las reservas para dicho grupo. Por otro lado, los clusters dominados
+por individuos jóvenes, con menor IMC y no fumadores, representan perfiles con un
+menor riesgo financiero para la aseguradora.
+
+En síntesis, la incorporación de técnicas de minería de datos y aprendizaje automático
+puede mejorar la toma de decisiones en suscripción, tarificación y diseño de estrategias
+preventivas, favoreciendo la sostenibilidad del sistema asegurador.
+
+
+
+\bibliographystyle{IEEEtran}
+\bibliography{referencias}
+
+
+\end{document}
