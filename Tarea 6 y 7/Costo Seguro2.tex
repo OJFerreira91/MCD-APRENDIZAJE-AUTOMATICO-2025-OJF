@@ -1,0 +1,459 @@
+\documentclass[12pt]{article}
+
+% Paquetes necesarios
+\usepackage[utf8]{inputenc}
+\usepackage[spanish]{babel}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{setspace}
+\usepackage{geometry}
+\geometry{margin=1in}
+\usepackage{hyperref}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsfonts}
+\usepackage{bm} % para vectores en negritas: \bm{x}
+\usepackage{subcaption} % ⚠️ Agregar en el preámbulo si no está
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, positioning, calc}
+\usepackage{float}
+
+
+
+
+\begin{document}
+
+% Título del artículo
+\title{Segmentación y Predicción del Costo de Seguro Médico Mediante Aprendizaje No Supervisado y Supervisado}
+\author{Oscar Jaime Ferreira}
+\date{\today}
+
+\maketitle
+
+\begin{abstract}
+La gestión eficiente de costos médicos es un desafío central para las aseguradoras de salud, especialmente cuando los asegurados presentan perfiles de riesgo heterogéneos. En este trabajo se integran enfoques de \textbf{aprendizaje no supervisado y supervisado} para analizar los factores que determinan el costo del seguro médico. En una primera etapa se aplica el algoritmo OPTICS, un método de clustering basado en densidad, para identificar subgrupos de riesgo sin necesidad de imponer un número fijo de clusters. Posteriormente, se implementan modelos de regresión lineal y \textit{Random Forest} para predecir el costo del seguro (\textit{charges}) y cuantificar la influencia de variables como edad, IMC y condición de fumador. Los resultados muestran la existencia de seis segmentos principales de asegurados y confirman que la condición de fumador y el sobrepeso son los factores más determinantes del costo. Este enfoque híbrido permite mejorar la segmentación de riesgo y optimizar la estimación de primas en el ámbito asegurador.
+\end{abstract}
+
+
+\newpage
+
+\section{Introducción}
+
+El incremento constante en los costos de atención médica representa un reto significativo para aseguradoras y sistemas de salud. La identificación precisa del riesgo asociado a los asegurados permite mejorar la tarificación y gestión financiera de las pólizas \cite{jamotton2024}. La presencia de factores como edad avanzada, obesidad y hábitos nocivos incrementa la probabilidad de reclamaciones médicas más costosas, impulsando la necesidad de modelos analíticos más robustos.
+
+En este contexto, los métodos de aprendizaje no supervisado permiten descubrir estructuras y grupos en los datos sin requerir etiquetas predefinidas, siendo una alternativa clave para la segmentación actuarial \cite{momahhed2023}. En particular, los algoritmos de clustering basados en densidad facilitan la detección de subpoblaciones con comportamientos de riesgo diferenciados y casos atípicos relevantes para el costo asegurador \cite{ankerst1999}.
+
+El algoritmo OPTICS, propuesto por Ankerst et al. (1999), permite identificar clusters con densidades variables sin fijar a priori la cantidad de grupos, lo que resulta especialmente adecuado en datos de asegurados con heterogeneidad de riesgo \cite{ankerst1999}. Mejoras recientes han extendido su estabilidad en contextos de alto desbalance, característica frecuente en asegurados fumadores frente a la mayoría no fumadora \cite{tang2021}.
+
+Este trabajo aplica OPTICS para segmentar perfiles de asegurados mediante cuatro variables clave: edad, IMC, número de dependientes y condición de fumador. Los resultados buscan apoyar tanto la optimización de costos en aseguradoras de salud como el diseño de estrategias preventivas para poblaciones con mayor riesgo médico \cite{wang2021}.
+
+En complemento al análisis exploratorio mediante OPTICS, este trabajo incorpora una segunda fase de \textbf{aprendizaje supervisado}, en la cual se modela directamente el costo del seguro médico. Mediante regresión lineal múltiple y bosques aleatorios (\textit{Random Forest}), se busca cuantificar el impacto individual de los factores de riesgo detectados en la etapa no supervisada, estableciendo así una relación explícita entre los perfiles de asegurados y su costo financiero esperado. Esta integración de técnicas supervisadas y no supervisadas constituye un enfoque híbrido que permite tanto descubrir segmentos de riesgo como estimar con mayor precisión los costos asociados.
+
+
+\section{Descripción de los datos}
+
+Para este trabajo se emplea el \textit{Medical Cost Personal Dataset}, el cual contiene información sobre asegurados en los Estados Unidos y el costo anual asociado a su seguro médico. El conjunto original incluye 1338 observaciones y siete variables, que se utilizaron en dos fases: primero para el análisis no supervisado de segmentación de riesgo y posteriormente para el modelado supervisado del costo (\textit{charges}). Las variables principales consideradas por su relevancia actuarial y sanitaria fueron:
+
+
+\begin{itemize}
+    \item \textbf{Edad (age):} años cumplidos del asegurado.
+    \item \textbf{Índice de Masa Corporal (bmi):} relación entre peso y estatura, indicador de sobrepeso u obesidad.
+    \item \textbf{Número de dependientes (children):} cantidad de hijos incluidos en la póliza.
+    \item \textbf{Condición de fumador (smoker\_yes):} variable binaria que distingue entre asegurados fumadores (1) y no fumadores (0).
+\end{itemize}
+
+En la etapa no supervisada se eliminaron variables exclusivamente categóricas (\textit{sexo} y \textit{región}) y la variable objetivo \textit{charges}, ya que no se emplean etiquetas en dicho proceso. Sin embargo, en la segunda fase (modelado supervisado), todas las variables disponibles fueron reincorporadas para predecir el costo del seguro y analizar su influencia sobre los factores de riesgo identificados.
+
+
+En la Tabla \ref{stats} se presentan estadísticos descriptivos de las cuatro variables seleccionadas:
+
+\begin{table}[h!]
+\centering
+\caption{Estadísticos descriptivos de las variables analizadas}
+\label{stats}
+\begin{tabular}{lcccc}
+\hline
+\textbf{Variable} & \textbf{Media} & \textbf{Desv. Est.} & \textbf{Mínimo} & \textbf{Máximo} \\
+\hline
+Edad (age) & 39.21 & 14.05 & 18 & 64 \\
+IMC (bmi) & 30.66 & 6.39 & 16.0 & 53.1 \\
+Hijos (children) & 1.09 & 1.21 & 0 & 5 \\
+Fumador (smoker\_yes) & 0.21 & 0.41 & 0 & 1 \\
+\hline
+\end{tabular}
+\end{table}
+
+El conjunto de datos presenta una población mayoritariamente no fumadora, con edades distribuidas principalmente entre los 20 y 60 años, y valores elevados de IMC en promedio, lo que sugiere la presencia de sobrepeso en la muestra. Estas características justifican el análisis de segmentación, dado que existen factores de riesgo diferenciados dentro de la población asegurada.
+
+\begin{figure}[h!]
+\centering
+\includegraphics[width=0.45\textwidth]{hist_age.png}
+\includegraphics[width=0.45\textwidth]{hist_bmi.png}
+\includegraphics[width=0.45\textwidth]{hist_children.png}
+\includegraphics[width=0.45\textwidth]{bar_smoker.png}
+\caption{Visualización descriptiva de las variables empleadas en el análisis: edad, IMC, número de dependientes y condición de fumador.}
+\label{fig:descriptivos}
+\end{figure}
+
+Como se observa en la Figura \ref{fig:descriptivos}, la edad se concentra entre los 25 y 55 años, lo cual representa una población adulta activa. El IMC presenta un desplazamiento hacia valores altos, indicando una prevalencia notable de sobrepeso u obesidad en la muestra. La mayoría de los asegurados no tienen hijos o tienen uno solo, reflejando pocos dependientes en la póliza. Finalmente, la proporción de fumadores es baja, lo que sugiere una distribución de riesgo desbalanceada, característica que puede afectar la estructura de los clusters identificados posteriormente.
+
+
+\section{Antecedentes}
+
+La segmentación no supervisada se ha aplicado con éxito en analítica de seguros para descubrir perfiles de riesgo cuando coexisten variables numéricas y categóricas. Jamotton (2024) muestra, en un contexto actuarial, adaptaciones de K-means, variantes difusas y clustering espectral para portafolios de pólizas, destacando cómo la segmentación soporta mapas de riesgo y rejillas de tarificación no supervisadas \cite{jamotton2024}. 
+
+En el ámbito específico de salud, Momahhed et al. (2023) agrupan a asegurados a partir de millones de reclamaciones de prescripción ambulatoria, usando K-means y validación con coeficiente de silueta, para distinguir clases de riesgo con implicaciones directas en costos \cite{momahhed2023}. 
+
+Respecto a métodos basados en densidad, fundamentales para detectar estructuras no convexas y puntos atípicos, el algoritmo OPTICS (Ankerst et al., 1999) ordena los puntos según “alcanzabilidad” y permite revelar jerarquías de densidades sin fijar a priori el número de grupos \cite{ankerst1999}. Mejoras recientes a OPTICS han sido propuestas para manejar densidades desiguales y facilitar la determinación robusta del número de clusters en datos reales \cite{tang2021}. Además, en aplicaciones médicas, enfoques basados en densidad como DBSCAN y OPTICS se han utilizado para analizar datos clínicos con presencia de atípicos y estructuras complejas, reforzando su idoneidad cuando la heterogeneidad sanitaria es relevante \cite{wang2021}.
+
+\section{Metodología}
+
+El enfoque metodológico adoptado en este estudio combina técnicas de aprendizaje no supervisado y supervisado con el propósito de analizar el riesgo médico y predecir el costo del seguro. La Figura~\ref{fig:metodo_general} muestra de manera esquemática las etapas principales del proceso: preprocesamiento de datos, segmentación mediante el algoritmo OPTICS, modelado supervisado del costo mediante regresión lineal y \textit{Random Forest}, y la integración final de resultados para su interpretación actuarial.
+
+
+\subsection{Diseño general}
+
+El proceso analítico se desarrolló en dos fases complementarias:
+
+\begin{enumerate}
+    \item \textbf{Análisis No Supervisado:} identificación de grupos homogéneos de asegurados a través del algoritmo OPTICS, con base en variables demográficas y de salud.
+    \item \textbf{Modelado Supervisado:} estimación del costo del seguro (\textit{charges}) mediante modelos de regresión lineal múltiple y bosques aleatorios (\textit{Random Forest}), utilizando las variables seleccionadas en la fase anterior.
+\end{enumerate}
+
+Esta estructura híbrida permite, primero, descubrir patrones de riesgo sin etiquetas predefinidas y, posteriormente, cuantificar la relación estadística entre los factores de riesgo y el costo financiero de las pólizas.
+
+\subsection{Preprocesamiento de los datos}
+
+A partir del \textit{Medical Cost Personal Dataset}, se seleccionaron las variables edad, índice de masa corporal (IMC), número de dependientes y condición de fumador como principales predictores del riesgo médico. Las variables categóricas fueron transformadas mediante codificación binaria y se aplicó normalización \textit{z-score} para garantizar la comparabilidad entre escalas.  
+
+Sea el vector de características para cada individuo $x_i \in \mathbb{R}^d$, la normalización se define como:
+
+\[
+x^{*}_{ij} = \frac{x_{ij} - \mu_j}{\sigma_j}
+\]
+
+donde $\mu_j$ y $\sigma_j$ representan la media y desviación estándar de la característica $j$.
+
+\subsection{Método no supervisado: OPTICS}
+
+El algoritmo OPTICS (\textit{Ordering Points To Identify the Clustering Structure}) propuesto por Ankerst et al. (1999) \cite{ankerst1999} se basa en la estimación de densidades locales para revelar la estructura jerárquica de los datos sin requerir un número fijo de clusters.  
+
+OPTICS ordena los puntos de acuerdo con su distancia de alcanzabilidad (\textit{reachability distance}) y genera un gráfico de alcanzabilidad que permite identificar valles de alta densidad (clusters) y picos de baja densidad (outliers).  
+
+Este enfoque resulta particularmente útil en portafolios de asegurados donde coexisten densidades desiguales, como ocurre entre fumadores y no fumadores \cite{tang2021}. Su aplicación en analítica médica ha demostrado eficacia para detectar subgrupos con diferentes perfiles de riesgo y costos potenciales \cite{wang2021}.
+
+\subsection{Métodos supervisados de predicción}
+
+Para cuantificar la influencia de los factores de riesgo sobre el costo del seguro se implementaron dos modelos supervisados de regresión:
+
+\begin{itemize}
+    \item \textbf{Regresión Lineal Múltiple:} modelo clásico de inferencia estadística que estima la relación lineal entre la variable objetivo ($y$) y los predictores ($x_j$), asumiendo independencia y homocedasticidad de los residuos. Su formalismo teórico se detalla en Hastie et al. (2009) \cite{hastie2009}.
+    \item \textbf{Random Forest Regressor:} algoritmo de aprendizaje de ensamble introducido por Breiman (2001) \cite{breiman2001}, que construye múltiples árboles de decisión sobre subconjuntos aleatorios de los datos y promedia sus predicciones para reducir la varianza. Este método permite capturar relaciones no lineales e interacciones complejas entre las variables predictoras.
+\end{itemize}
+
+Ambos modelos se entrenaron con una partición del 80\% de los datos y se validaron sobre el 20\% restante. Para evaluar su desempeño se utilizaron las métricas estándar de regresión: Error Absoluto Medio (MAE), Error Cuadrático Medio (MSE), Raíz del Error Cuadrático Medio (RMSE) y Error Porcentual Medio Absoluto (MAPE) \cite{chicco2021}.  
+
+Estudios previos han aplicado estos algoritmos para la predicción de costos médicos y gestión de pólizas, demostrando su efectividad en contextos reales \cite{dinh2019, chen2018}.
+
+\subsection{Evaluación y comparación}
+
+El modelo de regresión lineal se utilizó como referencia interpretativa para determinar el impacto marginal de cada variable sobre el costo. Posteriormente, el modelo de \textit{Random Forest} permitió evaluar las relaciones no lineales y obtener la importancia relativa de las variables predictoras, lo que facilitó la interpretación de los factores más determinantes del costo asegurador.
+
+Los resultados se compararon mediante las métricas antes descritas, seleccionando como modelo final aquel con menor error promedio y mayor capacidad de generalización. De esta forma, la metodología integra tanto la segmentación exploratoria como la predicción cuantitativa del riesgo financiero de los asegurados.
+
+\begin{figure}[H]
+\centering
+
+\shorthandoff{<>}
+
+\resizebox{0.95\textwidth}{!}{%
+\begin{tikzpicture}[
+    >=Latex,
+    node distance=1.5cm and 2.0cm,
+    every node/.style={font=\small},
+    box/.style={
+        draw,
+        rounded corners,
+        align=center,
+        minimum width=4cm,
+        minimum height=1cm
+    }
+]
+
+% Nodos principales
+\node[box] (data) {Datos originales\\(Medical Cost Personal Dataset)};
+\node[box, below=of data] (prep) {Preprocesamiento\\Selección de variables y normalización};
+
+% Subprocesos paralelos
+\node[box, below left=1.5cm and 2.0cm of prep] (optics) {Análisis no supervisado\\OPTICS};
+\node[box, below right=1.5cm and 2.0cm of prep] (sup) {Modelado supervisado\\Regresión lineal y Random Forest};
+
+% Resultados parciales
+\node[box, below=1.3cm of optics] (seg) {Segmentación de riesgo\\Clusters por perfil};
+\node[box, below=1.3cm of sup] (pred) {Predicción de costo\\\textit{charges} y métricas};
+
+% Punto medio entre seg y pred
+\coordinate (mid) at ($(seg)!.5!(pred)$);
+
+% Integración final centrada
+\node[box, below=1.5cm of mid, text width=8cm] (disc) {Integración de resultados:\\
+Relación entre segmentos de riesgo y costo esperado del seguro\\
+Soporte para tarificación y decisiones actuariales};
+
+% Flechas
+\draw[->] (data) -- (prep);
+\draw[->] (prep) -- (optics);
+\draw[->] (prep) -- (sup);
+\draw[->] (optics) -- (seg);
+\draw[->] (sup) -- (pred);
+\draw[->] (seg) -- (disc);
+\draw[->] (pred) -- (disc);
+
+\end{tikzpicture}
+}%
+
+\shorthandon{<>}
+
+\caption[Flujo metodológico del enfoque híbrido]{Flujo metodológico del enfoque híbrido: análisis no supervisado con OPTICS y modelado supervisado del costo del seguro.}
+\label{fig:metodo_general}
+\end{figure}
+
+
+
+
+
+\section{Algoritmo No Supervisado (OPTICS)}
+
+OPTICS (\textit{Ordering Points To Identify the Clustering Structure}) es un método de agrupamiento basado en densidad que no requiere especificar el número de clusters. El algoritmo genera un ordenamiento de los puntos y estima para cada uno una distancia de alcanzabilidad (\textit{reachability distance}) que depende de dos conceptos:
+
+\begin{itemize}
+    \item \textbf{Distancia núcleo}:
+    \begin{equation}
+    core\_dist(p) = \text{k-dist}(p)
+    \end{equation}
+    donde k-dist$(p)$ es la distancia al $k$-ésimo vecino más cercano y refleja la densidad local del punto $p$.
+    \item \textbf{Distancia de alcanzabilidad} entre puntos $p$ y $o$:
+    \begin{equation}
+    reachability(p,o) = \max(core\_dist(o), \, dist(o,p))
+    \end{equation}
+\end{itemize}
+
+El análisis de la gráfica de alcanzabilidad (\textit{reachability-plot}) permite identificar valles como posibles clusters y valores elevados como puntos atípicos. Esto lo hace particularmente adecuado para datos con densidades desiguales y presencia de grupos minoritarios de alto riesgo.
+
+\subsection{Métricas de evaluación del clustering}
+
+Se utilizaron tres medidas de validación interna:
+
+\begin{enumerate}
+    \item \textbf{Coeficiente Silhouette} ($S$): mide compacidad y separación entre grupos.
+    \begin{equation}
+    S = \frac{b(i) - a(i)}{\max\{a(i), b(i)\}}
+    \end{equation}
+    donde $a(i)$ es la distancia media entre $i$ y su cluster, y $b(i)$ la mínima distancia media a otros clusters.
+    
+    \item \textbf{Índice de Davies-Bouldin} ($DB$): evalúa dispersión intra-cluster vs separación.
+    \begin{equation}
+    DB = \frac{1}{k} \sum_{i=1}^{k} 
+    \max_{j \neq i} 
+    \left(
+    \frac{\sigma_i + \sigma_j}{d(c_i, c_j)}
+    \right)
+    \end{equation}
+    donde $c_i$ es el centroide del cluster $i$.
+    
+    \item \textbf{Índice Calinski-Harabasz} ($CH$): mide la razón entre dispersión inter e intra grupal.
+    \begin{equation}
+    CH = \frac{\text{tr}(B_k)/(k-1)}{\text{tr}(W_k)/(n-k)}
+    \end{equation}
+    donde $B_k$ y $W_k$ son las matrices de dispersión entre y dentro de clusters.
+\end{enumerate}
+
+Valores altos de Silhouette y Calinski-Harabasz, junto con valores bajos de Davies-Bouldin, indican una estructura de grupos bien definida.
+
+
+\section{Resultados del Análisis No Supervisado (OPTICS)}
+
+El algoritmo OPTICS identificó agrupamientos basados en diferencias de densidad entre
+asegurados, revelando estructuras útiles para segmentar niveles de riesgo médico.
+El análisis de la gráfica de alcanzabilidad permite visualizar la estructura jerárquica de
+los clusters y la presencia de puntos aislados, como se muestra en la
+Figura~\ref{fig:reachability}.
+
+\begin{figure}[ht!]
+\centering
+\includegraphics[width=0.9\textwidth]{reachability_plot.png}
+\caption{Reachability Plot generado por OPTICS. Los valles indican agrupamientos de alta densidad, mientras que los picos representan puntos aislados o de baja densidad.}
+\label{fig:reachability}
+\end{figure}
+
+La Figura~\ref{fig:cluster_risk} presenta la distribución espacial de los individuos en el
+espacio Edad--IMC, junto con los clusters detectados y la proporción de fumadores.
+Se observan dos grupos principales y un conjunto de puntos aislados asociados a baja densidad.
+
+\begin{figure}[ht!]
+\centering
+\includegraphics[width=0.70\textwidth]{scatter_optics.png}
+\vspace{0.3cm}
+
+\includegraphics[width=0.70\textwidth]{risk_clusters.png}
+\caption{(Arriba) Agrupamientos detectados mediante OPTICS.
+(Abajo) Proporción de fumadores por cluster, empleada como indicador de riesgo actuarial.}
+\label{fig:cluster_risk}
+\end{figure}
+
+\clearpage
+\begin{table}[ht!]
+\centering
+\caption{Resumen de variables de riesgo por cluster óptimo.}
+\label{tab:riesgo}
+\begin{tabular}{c c c c c}
+\hline
+Cluster & Edad Prom. & IMC Prom. & \% Fumadores & Riesgo \\ \hline
+0  & 38.51 & 30.71 & 100\% & Alto \\
+1  & 22.58 & 29.02 & 0\%   & Bajo \\
+2  & 56.34 & 31.14 & 0\%   & Bajo \\
+3  & 41.13 & 30.33 & 0\%   & Bajo \\
+-1 & 38.32 & 31.12 & 0\%   & Bajo \\
+\hline
+\end{tabular}
+\end{table}
+
+Como se observa en la Tabla~\ref{tab:riesgo}, el cluster 0 concentra el 100\% de
+asegurados fumadores junto con un IMC promedio elevado, lo cual indica un perfil de
+alto riesgo médico-financiero. Por el contrario, los demás clusters representan perfiles
+de menor siniestralidad esperada al no presentar fumadores ni indicadores antropométricos críticos.
+
+
+\section{Modelado Supervisado del Costo del Seguro}
+
+A fin de complementar la segmentación no supervisada, se aplicaron modelos de \textbf{aprendizaje supervisado}
+para predecir el costo anual del seguro médico (\textit{charges}) a partir de las variables
+\textit{edad}, \textit{índice de masa corporal (BMI)}, \textit{número de dependientes},
+\textit{sexo}, \textit{condición de fumador} y \textit{región}.
+El objetivo fue evaluar de forma cuantitativa la influencia de los factores de riesgo
+identificados previamente sobre el costo financiero de las pólizas.
+
+El modelo de \textit{Random Forest}, propuesto por Breiman (2001) \cite{breiman2001},
+fue elegido por su capacidad para capturar interacciones no lineales y reducir la varianza del estimador.
+Por su parte, la regresión lineal múltiple se empleó como modelo base clásico y de referencia interpretativa
+\cite{hastie2009}. Las métricas de error empleadas (MAE, MSE, RMSE, MAPE) son ampliamente utilizadas
+en regresión para evaluar precisión y robustez \cite{chicco2021}. Diversos estudios recientes aplican
+algoritmos supervisados a la predicción de costos médicos y pólizas de salud, con resultados prometedores
+\cite{dinh2019, chen2018}.
+
+
+\subsection{Modelos empleados}
+
+Se consideraron dos algoritmos supervisados de regresión:
+
+\begin{enumerate}
+    \item \textbf{Regresión Lineal Múltiple}: modelo base interpretativo que asume una relación lineal entre las características de los asegurados y el costo del seguro, de la forma:
+    \[
+    y = \beta_0 + \beta_1 x_1 + \beta_2 x_2 + \cdots + \beta_p x_p + \varepsilon
+    \]
+    donde $y$ representa el costo del seguro y $x_j$ las variables predictoras.
+
+    \item \textbf{Random Forest Regressor}: ensamble de múltiples árboles de decisión que permite capturar relaciones no lineales y efectos de interacción entre las variables predictoras. Este modelo promedia las predicciones de cientos de árboles entrenados sobre diferentes subconjuntos de datos, reduciendo la varianza y mejorando la capacidad de generalización.
+\end{enumerate}
+
+\subsection{Métricas de evaluación}
+
+El desempeño de los modelos se evaluó mediante las métricas más comunes en regresión:
+
+\begin{itemize}
+    \item \textbf{Error Absoluto Medio (MAE)}:
+    \[
+    MAE = \frac{1}{n} \sum_{i=1}^{n} |y_i - \hat{y}_i|
+    \]
+    mide el error promedio en unidades monetarias.
+    \item \textbf{Error Cuadrático Medio (MSE)}:
+    \[
+    MSE = \frac{1}{n} \sum_{i=1}^{n} (y_i - \hat{y}_i)^2
+    \]
+    penaliza más los errores grandes y explica los valores elevados observados (del orden de $10^7$),
+    ya que el costo del seguro se mide en miles de unidades monetarias.
+    \item \textbf{Raíz del Error Cuadrático Medio (RMSE)}:
+    \[
+    RMSE = \sqrt{MSE}
+    \]
+    devuelve el error promedio en las mismas unidades que el costo real.
+    \item \textbf{Error Porcentual Medio Absoluto (MAPE)}:
+    \[
+    MAPE = \frac{100}{n} \sum_{i=1}^{n} \left| \frac{y_i - \hat{y}_i}{y_i} \right|
+    \]
+    expresa el error relativo porcentual promedio de las predicciones.
+\end{itemize}
+
+\subsection{Resultados del modelado supervisado}
+
+La Tabla~\ref{tab:modelosupervisado} muestra las métricas obtenidas para ambos modelos de predicción:
+
+\begin{table}[h!]
+\centering
+\caption{Desempeño de los modelos supervisados en la predicción del costo del seguro}
+\label{tab:modelosupervisado}
+\begin{tabular}{lcccc}
+\hline
+\textbf{Modelo} & \textbf{MAE} & \textbf{MSE} & \textbf{RMSE} & \textbf{MAPE (\%)} \\ \hline
+Regresión Lineal & 4,181.19 & 33,596,915.85 & 5,796.28 & 46.89 \\
+Random Forest & 2,559.54 & 21,166,502.28 & 4,600.71 & 32.05 \\
+\hline
+\end{tabular}
+\end{table}
+
+El modelo de \textbf{Random Forest} superó claramente a la regresión lineal en todas las métricas:
+redujo el error absoluto promedio en 39\%, el RMSE en 21\% y el error porcentual en 32\%.
+Esto confirma que las relaciones entre edad, IMC y hábito de fumar con el costo del seguro no son puramente lineales,
+sino que presentan interacciones complejas que el bosque aleatorio captura de forma más eficiente.
+
+\subsection{Importancia de las variables}
+
+La Figura~\ref{fig:importancia} muestra las variables más influyentes en la predicción del costo del seguro:
+
+\begin{figure}[h!]
+\centering
+\includegraphics[width=0.8\textwidth]{impo_var.png}
+\caption{Importancia relativa de las variables en el modelo Random Forest.}
+\label{fig:importancia}
+\end{figure}
+
+El modelo identificó a \textit{smoker\_yes} (condición de fumador) como la variable más determinante,
+aportando aproximadamente el 61\% de la capacidad predictiva total,
+seguida por \textit{bmi} (21.5\%) y \textit{age} (13.5\%).
+Las demás variables, como \textit{children}, \textit{sex} y \textit{region},
+presentaron impactos marginales en el costo proyectado.
+
+Estos resultados refuerzan la conclusión de que los hábitos de salud y el sobrepeso
+tienen mayor peso financiero que factores demográficos o familiares.
+
+
+\section{Conclusiones y Discusión}
+
+El presente trabajo demuestra que la combinación de técnicas no supervisadas y supervisadas
+proporciona una comprensión integral del riesgo médico-financiero en portafolios de asegurados.
+
+En la primera etapa, el algoritmo OPTICS permitió descubrir subgrupos con perfiles de riesgo diferenciados,
+identificando un segmento claramente asociado a fumadores con IMC elevado.
+En la segunda etapa, los modelos supervisados validaron cuantitativamente la influencia de esos factores
+sobre el costo real del seguro.
+
+El \textbf{Random Forest Regressor} mostró el mejor desempeño predictivo, con errores promedio del orden
+de 2,500 a 4,600 unidades monetarias, y confirmó que la condición de fumador y el índice de masa corporal
+son las variables que más elevan el costo de las pólizas. Esto coincide con la segmentación previa y refuerza
+la coherencia del enfoque híbrido.
+
+Desde una perspectiva actuarial, estos hallazgos respaldan la utilidad de modelos analíticos híbridos
+que combinen la exploración no supervisada con la predicción supervisada, ya que permiten detectar segmentos
+de alto riesgo y, al mismo tiempo, estimar el impacto financiero esperado de cada factor.
+
+Futuras líneas de investigación pueden incorporar modelos explicativos basados en interpretabilidad (SHAP o LIME)
+y simulaciones con datos sintéticos para ajustar tarifas personalizadas y políticas de prevención más precisas.
+
+
+
+
+\bibliographystyle{IEEEtran}
+\bibliography{referencias}
+
+
+\end{document}
